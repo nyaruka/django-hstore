@@ -86,8 +86,8 @@ class HStoreWhereNode(WhereNode):
 
             if lookup_type == 'exact':
                 if isinstance(param, dict):
-                    return ('{0} = %s'.format(field), [param])
-
+                    param_keys = list(param.keys())
+                    return '%s->\'%s\' = %%s' % (field, param_keys[0]), param.values()
                 raise ValueError('invalid value')
 
             elif lookup_type in ('gt', 'gte', 'lt', 'lte'):
