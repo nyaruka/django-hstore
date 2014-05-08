@@ -89,25 +89,29 @@ class HStoreWhereNode(WhereNode):
                     param_keys = list(param.keys())
                     return '%s->\'%s\' = %%s' % (field, param_keys[0]), param.values()
                 raise ValueError('invalid value')
-
+            elif lookup_type == 'iexact':
+                if isinstance(param, dict):
+                    param_keys = list(param.keys())
+                    return 'lower(%s->\'%s\') = lower(%%s)' % (field, param_keys[0]), param.values()
+                raise ValueError('invalid value')
             elif lookup_type in ('gt', 'gte', 'lt', 'lte'):
                 if isinstance(param, dict) and len(param) == 1:
                     sign = (lookup_type[0] == 'g' and '>%s' or '<%s') % (lookup_type[-1] == 'e' and '=' or '')
                     param_keys = list(param.keys())
                     return ('%s->\'%s\' %s %%s' % (field, param_keys[0], sign), param.values())
-
                 raise ValueError('invalid value')
-
             elif lookup_type in ['contains', 'icontains']:
                 if isinstance(param, dict):
                     values = list(param.values())
                     keys = list(param.keys())
-
                     if len(values) == 1 and isinstance(values[0], (list, tuple)):
                         return ('%s->\'%s\' = ANY(%%s)' % (field, keys[0]), [[str(x) for x in values[0]]])
 
-                    return ('%s @> %%s' % field, [param])
+                    like = 'LIKE'
+                    if lookup_type == "icontains":
+                        like = 'ILIKE'
 
+                    return ("%s->'%s' %s %%s" % (field, keys[0], like), ['%' + values[0] + '%'])
                 elif isinstance(param, (list, tuple)):
                     if len(param) < 2:
                         return ('%s ? %%s' % field, [param[0]])
